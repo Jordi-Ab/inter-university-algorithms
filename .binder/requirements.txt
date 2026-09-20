@@ -1,0 +1,21 @@
+# Unified environment for Inter-University Collaborative Algorithms Project
+# Covers: Gale-Roth-Shapley, Polygon Integration, and Voronoi Volume Game
+
+# Core scientific & numerical computing
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+
+# Computational geometry & spatial analysis
+shapely>=2.0.0
+
+# Graph algorithms & networks (Matching markets)
+networkx>=3.0
+
+# Data visualization & plotting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Interactive widgets for notebooks & simulation games
+ipywidgets>=8.0.0
+jupyterlab>=4.0.0
