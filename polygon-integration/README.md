@@ -11,4 +11,4 @@ Quadrature routines and numerical methods evaluated over complex 2D planar domai
 - **Visual Analytics & Benchmarks**: Comparing convergence and error orders between triangular Gauss rules and quadrilateral spline elements on exponential peaks and conical surfaces.
 
 ## Notebooks
-- [`Numerical_Integration_over_Polygons_Visual_Guide.ipynb`](Numerical_Integration_over_Polygons_Visual_Guide.ipynb): Interactive visual guide, step-by-step geometric explanations, 3D terrain plots, and interactive widget experiments.
+- [`Numerical_Integration_over_Polygons_Visual_Guide.ipynb`](Numerical_Integration_over_Polygons_Visual_Guide.ipynb): Visual guide, step-by-step geometric explanations, 3D terrain plots, and benchmark comparisons.
