@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>A Voronoï Volume Game for the Avocados</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #0F172A;
+      --card-bg: #1E293B;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --accent: #22C55E;
+      --accent-glow: rgba(34, 197, 94, 0.25);
+      --red-p: #EF4444;
+      --blue-p: #3B82F6;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #F8FAFC;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .formula-badge {
+      display: inline-block;
+      margin-top: 8px;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      color: #86EFAC;
+      font-family: monospace;
+      font-size: 0.88rem;
+      padding: 5px 14px;
+      border-radius: 9999px;
+    }
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: 600px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .game-layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+    }
+
+    /* Canvas Section */
+    .canvas-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 600px;
+      height: 600px;
+      cursor: crosshair;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid #475569;
+    }
+
+    canvas {
+      display: block;
+      width: 600px;
+      height: 600px;
+    }
+
+    .origin-tag {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid #EAB308;
+      color: #FDE047;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Sidebar & Scoreboard */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .panel-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Turn Indicator */
+    .turn-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border-left: 4px solid var(--red-p);
+      margin-bottom: 14px;
+    }
+
+    .turn-box.blue {
+      border-left-color: var(--blue-p);
+    }
+
+    .turn-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .turn-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--red-p);
+    }
+
+    .turn-pill.blue {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--blue-p);
+    }
+
+    /* Score Meters */
+    .score-meter-group {
+      margin-bottom: 14px;
+    }
+
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .meter-bar {
+      height: 14px;
+      background: #0F172A;
+      border-radius: 7px;
+      overflow: hidden;
+      display: flex;
+      border: 1px solid #334155;
+    }
+
+    .bar-red {
+      background: var(--red-p);
+      height: 100%;
+      transition: width 0.15s ease-out;
+    }
+
+    .bar-blue {
+      background: var(--blue-p);
+      height: 100%;
+      transition: width 0.15s ease-out;
+    }
+
+    .meter-values {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .val-red { color: var(--red-p); }
+    .val-blue { color: var(--blue-p); }
+
+    /* Divergence Alert */
+    .divergence-alert {
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.4);
+      color: #FDE047;
+      font-size: 0.8rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      line-height: 1.35;
+      margin-top: 10px;
+    }
+
+    /* Controls */
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #334155;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #475569;
+      border-color: #64748B;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #052E16;
+      border-color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: #4ADE80;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .toggle-row input {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Modal / Winner Announcement */
+    .game-over-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(59, 130, 246, 0.2));
+      border: 1px solid #22C55E;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .game-over-banner.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>🥑 A Voronoï Volume Game for the Avocados</h1>
+    <div class="subtitle">Seminario CRESE / Facultad de Ciencias Actuariales, Universidad Anáhuac México</div>
+    <div class="formula-badge">
+      Density: f(x, y) = (√3 / 4π) · exp( -(x² - xy + y²) / 2 ) &nbsp;|&nbsp; Peak at (0, 0)
+    </div>
+  </header>
+
+  <div class="game-layout">
+    <!-- Canvas Area -->
+    <div class="canvas-card">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="voronoiCanvas" width="600" height="600"></canvas>
+        <div class="origin-tag">★ Origin Goldmine (0, 0)</div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
+        Domain: First Quadrant Unit Square [0, 1] × [0, 1]. Coordinates map from (0, 0) bottom-left to (1, 1) top-right.
+      </div>
+    </div>
+
+    <!-- Sidebar Scoreboard -->
+    <div class="sidebar">
+      <!-- Turn / Status Panel -->
+      <div class="panel">
+        <div class="turn-box" id="turnBox">
+          <div class="turn-text" id="turnText">Player 1's Turn (Red)</div>
+          <div class="turn-pill" id="turnPill">Seed 1 of 6</div>
+        </div>
+
+        <div class="game-over-banner" id="gameOverBanner">
+          <div style="font-size: 1.05rem; font-weight: 800; color: #86EFAC;" id="winnerTitle">Match Complete!</div>
+          <div style="font-size: 0.85rem; color: #F8FAFC; margin-top: 4px;" id="winnerDesc"></div>
+        </div>
+
+        <!-- Volume Meter (Economic Harvest) -->
+        <div class="score-meter-group">
+          <div class="meter-label">
+            <span><b>🥑 Captured Avocado Volume (Payoff)</b></span>
+            <span id="volLeadText">Red +0.0%</span>
+          </div>
+          <div class="meter-bar">
+            <div class="bar-red" id="barVolRed" style="width: 50%;"></div>
+            <div class="bar-blue" id="barVolBlue" style="width: 50%;"></div>
+          </div>
+          <div class="meter-values">
+            <span class="val-red" id="valVolRed">Red: 50.0%</span>
+            <span class="val-blue" id="valVolBlue">Blue: 50.0%</span>
+          </div>
+        </div>
+
+        <!-- Area Meter (Flat Land) -->
+        <div class="score-meter-group">
+          <div class="meter-label">
+            <span>🗺️ Physical Land Area</span>
+            <span id="areaLeadText">Equal</span>
+          </div>
+          <div class="meter-bar">
+            <div class="bar-red" id="barAreaRed" style="width: 50%; opacity: 0.6;"></div>
+            <div class="bar-blue" id="barAreaBlue" style="width: 50%; opacity: 0.6;"></div>
+          </div>
+          <div class="meter-values">
+            <span class="val-red" id="valAreaRed" style="opacity: 0.8;">Red: 50.0%</span>
+            <span class="val-blue" id="valAreaBlue" style="opacity: 0.8;">Blue: 50.0%</span>
+          </div>
+        </div>
+
+        <!-- Divergence Callout -->
+        <div class="divergence-alert" id="divergenceBox">
+          ⚡ <b>Area vs. Volume Divergence:</b> Click on the canvas to place seeds. Notice how territory near (0, 0) captures massive volume compared to its physical area!
+        </div>
+      </div>
+
+      <!-- Game Controls -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>Game Options</span>
+          <span style="font-size: 0.78rem; font-weight: 500; color: var(--text-muted);">6 Total Centers</span>
+        </div>
+
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Opponent:</div>
+        <select id="modeSelect" style="width: 100%; padding: 8px 12px; background: #0F172A; border: 1px solid var(--border); color: #FFF; border-radius: 8px; font-family: inherit; font-size: 0.85rem; margin-bottom: 12px;">
+          <option value="human">2-Player Turn-Based (Student vs Student)</option>
+          <option value="ai_volume" selected>Play vs Computer (Greedy Volume AI)</option>
+          <option value="ai_area">Play vs Computer (Greedy Area AI)</option>
+          <option value="sandbox">Free Sandbox (Place & Move Seeds)</option>
+        </select>
+
+        <div class="btn-group">
+          <button class="primary" id="btnRestart">New 6-Seed Match</button>
+          <button id="btnCopyCoords">Copy Coordinates</button>
+        </div>
+
+        <div class="toggle-row">
+          <label for="checkDelaunay">Show Delaunay Dual Graph</label>
+          <input type="checkbox" id="checkDelaunay">
+        </div>
+        <div class="toggle-row">
+          <label for="checkQuarantine">Quarantine Radius (Min Distance)</label>
+          <input type="checkbox" id="checkQuarantine" checked>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Voronoi Core Library -->
+<script>
+/* Raymond Hill Voronoi Core Library (MIT) */
+/*!
+Copyright (C) 2010-2013 Raymond Hill: https://github.com/gorhill/Javascript-Voronoi
+MIT License: See https://github.com/gorhill/Javascript-Voronoi/LICENSE.md
+*/
+;
+function Voronoi(){this.vertices=null;this.edges=null;this.cells=null;this.toRecycle=null;this.beachsectionJunkyard=[];this.circleEventJunkyard=[];
+this.vertexJunkyard=[];this.edgeJunkyard=[];this.cellJunkyard=[]}Voronoi.prototype.reset=function(){if(!this.beachline){this.beachline=new this.RBTree()
+}if(this.beachline.root){var a=this.beachline.getFirst(this.beachline.root);while(a){this.beachsectionJunkyard.push(a);a=a.rbNext
+}}this.beachline.root=null;if(!this.circleEvents){this.circleEvents=new this.RBTree()}this.circleEvents.root=this.firstCircleEvent=null;
+this.vertices=[];this.edges=[];this.cells=[]};Voronoi.prototype.sqrt=Math.sqrt;Voronoi.prototype.abs=Math.abs;Voronoi.prototype.ε=Voronoi.ε=1e-9;
+Voronoi.prototype.invε=Voronoi.invε=1/Voronoi.ε;Voronoi.prototype.equalWithEpsilon=function(d,c){return this.abs(d-c)<1e-9
+};Voronoi.prototype.greaterThanWithEpsilon=function(d,c){return d-c>1e-9};Voronoi.prototype.greaterThanOrEqualWithEpsilon=function(d,c){return c-d<1e-9
+};Voronoi.prototype.lessThanWithEpsilon=function(d,c){return c-d>1e-9};Voronoi.prototype.lessThanOrEqualWithEpsilon=function(d,c){return d-c<1e-9
+};Voronoi.prototype.RBTree=function(){this.root=null};Voronoi.prototype.RBTree.prototype.rbInsertSuccessor=function(e,a){var d;
+if(e){a.rbPrevious=e;a.rbNext=e.rbNext;if(e.rbNext){e.rbNext.rbPrevious=a}e.rbNext=a;if(e.rbRight){e=e.rbRight;while(e.rbLeft){e=e.rbLeft
+}e.rbLeft=a}else{e.rbRight=a}d=e}else{if(this.root){e=this.getFirst(this.root);a.rbPrevious=null;a.rbNext=e;e.rbPrevious=a;
+e.rbLeft=a;d=e}else{a.rbPrevious=a.rbNext=null;this.root=a;d=null}}a.rbLeft=a.rbRight=null;a.rbParent=d;a.rbRed=true;var c,b;
+e=a;while(d&&d.rbRed){c=d.rbParent;if(d===c.rbLeft){b=c.rbRight;if(b&&b.rbRed){d.rbRed=b.rbRed=false;c.rbRed=true;e=c}else{if(e===d.rbRight){this.rbRotateLeft(d);
+e=d;d=e.rbParent}d.rbRed=false;c.rbRed=true;this.rbRotateRight(c)}}else{b=c.rbLeft;if(b&&b.rbRed){d.rbRed=b.rbRed=false;c.rbRed=true;
+e=c}else{if(e===d.rbLeft){this.rbRotateRight(d);e=d;d=e.rbParent}d.rbRed=false;c.rbRed=true;this.rbRotateLeft(c)}}d=e.rbParent
+}this.root.rbRed=false};Voronoi.prototype.RBTree.prototype.rbRemoveNode=function(f){if(f.rbNext){f.rbNext.rbPrevious=f.rbPrevious
+}if(f.rbPrevious){f.rbPrevious.rbNext=f.rbNext}f.rbNext=f.rbPrevious=null;var e=f.rbParent,g=f.rbLeft,b=f.rbRight,d;if(!g){d=b
+}else{if(!b){d=g}else{d=this.getFirst(b)}}if(e){if(e.rbLeft===f){e.rbLeft=d}else{e.rbRight=d}}else{this.root=d}var a;if(g&&b){a=d.rbRed;
+d.rbRed=f.rbRed;d.rbLeft=g;g.rbParent=d;if(d!==b){e=d.rbParent;d.rbParent=f.rbParent;f=d.rbRight;e.rbLeft=f;d.rbRight=b;b.rbParent=d
+}else{d.rbParent=e;e=d;f=d.rbRight}}else{a=f.rbRed;f=d}if(f){f.rbParent=e}if(a){return}if(f&&f.rbRed){f.rbRed=false;return
+}var c;do{if(f===this.root){break}if(f===e.rbLeft){c=e.rbRight;if(c.rbRed){c.rbRed=false;e.rbRed=true;this.rbRotateLeft(e);
+c=e.rbRight}if((c.rbLeft&&c.rbLeft.rbRed)||(c.rbRight&&c.rbRight.rbRed)){if(!c.rbRight||!c.rbRight.rbRed){c.rbLeft.rbRed=false;
+c.rbRed=true;this.rbRotateRight(c);c=e.rbRight}c.rbRed=e.rbRed;e.rbRed=c.rbRight.rbRed=false;this.rbRotateLeft(e);f=this.root;
+break}}else{c=e.rbLeft;if(c.rbRed){c.rbRed=false;e.rbRed=true;this.rbRotateRight(e);c=e.rbLeft}if((c.rbLeft&&c.rbLeft.rbRed)||(c.rbRight&&c.rbRight.rbRed)){if(!c.rbLeft||!c.rbLeft.rbRed){c.rbRight.rbRed=false;
+c.rbRed=true;this.rbRotateLeft(c);c=e.rbLeft}c.rbRed=e.rbRed;e.rbRed=c.rbLeft.rbRed=false;this.rbRotateRight(e);f=this.root;
+break}}c.rbRed=true;f=e;e=e.rbParent}while(!f.rbRed);if(f){f.rbRed=false}};Voronoi.prototype.RBTree.prototype.rbRotateLeft=function(b){var d=b,c=b.rbRight,a=d.rbParent;
+if(a){if(a.rbLeft===d){a.rbLeft=c}else{a.rbRight=c}}else{this.root=c}c.rbParent=a;d.rbParent=c;d.rbRight=c.rbLeft;if(d.rbRight){d.rbRight.rbParent=d
+}c.rbLeft=d};Voronoi.prototype.RBTree.prototype.rbRotateRight=function(b){var d=b,c=b.rbLeft,a=d.rbParent;if(a){if(a.rbLeft===d){a.rbLeft=c
+}else{a.rbRight=c}}else{this.root=c}c.rbParent=a;d.rbParent=c;d.rbLeft=c.rbRight;if(d.rbLeft){d.rbLeft.rbParent=d}c.rbRight=d
+};Voronoi.prototype.RBTree.prototype.getFirst=function(a){while(a.rbLeft){a=a.rbLeft}return a};Voronoi.prototype.RBTree.prototype.getLast=function(a){while(a.rbRight){a=a.rbRight
+}return a};Voronoi.prototype.Diagram=function(a){this.site=a};Voronoi.prototype.Cell=function(a){this.site=a;this.halfedges=[];
+this.closeMe=false};Voronoi.prototype.Cell.prototype.init=function(a){this.site=a;this.halfedges=[];this.closeMe=false;return this
+};Voronoi.prototype.createCell=function(b){var a=this.cellJunkyard.pop();if(a){return a.init(b)}return new this.Cell(b)};
+Voronoi.prototype.Cell.prototype.prepareHalfedges=function(){var a=this.halfedges,b=a.length,c;while(b--){c=a[b].edge;if(!c.vb||!c.va){a.splice(b,1)
+}}a.sort(function(e,d){return d.angle-e.angle});return a.length};Voronoi.prototype.Cell.prototype.getNeighborIds=function(){var a=[],b=this.halfedges.length,c;
+while(b--){c=this.halfedges[b].edge;if(c.lSite!==null&&c.lSite.voronoiId!=this.site.voronoiId){a.push(c.lSite.voronoiId)}else{if(c.rSite!==null&&c.rSite.voronoiId!=this.site.voronoiId){a.push(c.rSite.voronoiId)
+}}}return a};Voronoi.prototype.Cell.prototype.getBbox=function(){var i=this.halfedges,d=i.length,a=Infinity,g=Infinity,c=-Infinity,b=-Infinity,h,f,e;
+while(d--){h=i[d].getStartpoint();f=h.x;e=h.y;if(f<a){a=f}if(e<g){g=e}if(f>c){c=f}if(e>b){b=e}}return{x:a,y:g,width:c-a,height:b-g}
+};Voronoi.prototype.Cell.prototype.pointIntersection=function(a,h){var b=this.halfedges,c=b.length,f,g,e,d;while(c--){f=b[c];
+g=f.getStartpoint();e=f.getEndpoint();d=(h-g.y)*(e.x-g.x)-(a-g.x)*(e.y-g.y);if(!d){return 0}if(d>0){return -1}}return 1};
+Voronoi.prototype.Vertex=function(a,b){this.x=a;this.y=b};Voronoi.prototype.Edge=function(b,a){this.lSite=b;this.rSite=a;
+this.va=this.vb=null};Voronoi.prototype.Halfedge=function(d,e,a){this.site=e;this.edge=d;if(a){this.angle=Math.atan2(a.y-e.y,a.x-e.x)
+}else{var c=d.va,b=d.vb;this.angle=d.lSite===e?Math.atan2(b.x-c.x,c.y-b.y):Math.atan2(c.x-b.x,b.y-c.y)}};Voronoi.prototype.createHalfedge=function(b,c,a){return new this.Halfedge(b,c,a)
+};Voronoi.prototype.Halfedge.prototype.getStartpoint=function(){return this.edge.lSite===this.site?this.edge.va:this.edge.vb
+};Voronoi.prototype.Halfedge.prototype.getEndpoint=function(){return this.edge.lSite===this.site?this.edge.vb:this.edge.va
+};Voronoi.prototype.createVertex=function(a,c){var b=this.vertexJunkyard.pop();if(!b){b=new this.Vertex(a,c)}else{b.x=a;b.y=c
+}this.vertices.push(b);return b};Voronoi.prototype.createEdge=function(e,a,d,b){var c=this.edgeJunkyard.pop();if(!c){c=new this.Edge(e,a)
+}else{c.lSite=e;c.rSite=a;c.va=c.vb=null}this.edges.push(c);if(d){this.setEdgeStartpoint(c,e,a,d)}if(b){this.setEdgeEndpoint(c,e,a,b)
+}this.cells[e.voronoiId].halfedges.push(this.createHalfedge(c,e,a));this.cells[a.voronoiId].halfedges.push(this.createHalfedge(c,a,e));
+return c};Voronoi.prototype.createBorderEdge=function(d,c,a){var b=this.edgeJunkyard.pop();if(!b){b=new this.Edge(d,null)
+}else{b.lSite=d;b.rSite=null}b.va=c;b.vb=a;this.edges.push(b);return b};Voronoi.prototype.setEdgeStartpoint=function(b,d,a,c){if(!b.va&&!b.vb){b.va=c;
+b.lSite=d;b.rSite=a}else{if(b.lSite===a){b.vb=c}else{b.va=c}}};Voronoi.prototype.setEdgeEndpoint=function(b,d,a,c){this.setEdgeStartpoint(b,a,d,c)
+};Voronoi.prototype.Beachsection=function(){};Voronoi.prototype.createBeachsection=function(a){var b=this.beachsectionJunkyard.pop();
+if(!b){b=new this.Beachsection()}b.site=a;return b};Voronoi.prototype.leftBreakPoint=function(e,f){var a=e.site,m=a.x,l=a.y,k=l-f;
+if(!k){return m}var n=e.rbPrevious;if(!n){return -Infinity}a=n.site;var h=a.x,g=a.y,d=g-f;if(!d){return h}var c=h-m,j=1/k-1/d,i=c/d;
+if(j){return(-i+this.sqrt(i*i-2*j*(c*c/(-2*d)-g+d/2+l-k/2)))/j+m}return(m+h)/2};Voronoi.prototype.rightBreakPoint=function(b,c){var d=b.rbNext;
+if(d){return this.leftBreakPoint(d,c)}var a=b.site;return a.y===c?a.x:Infinity};Voronoi.prototype.detachBeachsection=function(a){this.detachCircleEvent(a);
+this.beachline.rbRemoveNode(a);this.beachsectionJunkyard.push(a)};Voronoi.prototype.removeBeachsection=function(b){var a=b.circleEvent,j=a.x,h=a.ycenter,e=this.createVertex(j,h),f=b.rbPrevious,d=b.rbNext,l=[b],g=Math.abs;
+this.detachBeachsection(b);var m=f;while(m.circleEvent&&g(j-m.circleEvent.x)<1e-9&&g(h-m.circleEvent.ycenter)<1e-9){f=m.rbPrevious;
+l.unshift(m);this.detachBeachsection(m);m=f}l.unshift(m);this.detachCircleEvent(m);var c=d;while(c.circleEvent&&g(j-c.circleEvent.x)<1e-9&&g(h-c.circleEvent.ycenter)<1e-9){d=c.rbNext;
+l.push(c);this.detachBeachsection(c);c=d}l.push(c);this.detachCircleEvent(c);var k=l.length,i;for(i=1;i<k;i++){c=l[i];m=l[i-1];
+this.setEdgeStartpoint(c.edge,m.site,c.site,e)}m=l[0];c=l[k-1];c.edge=this.createEdge(m.site,c.site,undefined,e);this.attachCircleEvent(m);
+this.attachCircleEvent(c)};Voronoi.prototype.addBeachsection=function(l){var j=l.x,n=l.y;var p,m,v,q,o=this.beachline.root;
+while(o){v=this.leftBreakPoint(o,n)-j;if(v>1e-9){o=o.rbLeft}else{q=j-this.rightBreakPoint(o,n);if(q>1e-9){if(!o.rbRight){p=o;
+break}o=o.rbRight}else{if(v>-1e-9){p=o.rbPrevious;m=o}else{if(q>-1e-9){p=o;m=o.rbNext}else{p=m=o}}break}}}var e=this.createBeachsection(l);
+this.beachline.rbInsertSuccessor(p,e);if(!p&&!m){return}if(p===m){this.detachCircleEvent(p);m=this.createBeachsection(p.site);
+this.beachline.rbInsertSuccessor(e,m);e.edge=m.edge=this.createEdge(p.site,e.site);this.attachCircleEvent(p);this.attachCircleEvent(m);
+return}if(p&&!m){e.edge=this.createEdge(p.site,e.site);return}if(p!==m){this.detachCircleEvent(p);this.detachCircleEvent(m);
+var h=p.site,k=h.x,i=h.y,t=l.x-k,r=l.y-i,a=m.site,c=a.x-k,b=a.y-i,u=2*(t*b-r*c),g=t*t+r*r,f=c*c+b*b,s=this.createVertex((b*g-r*f)/u+k,(t*f-c*g)/u+i);
+this.setEdgeStartpoint(m.edge,h,a,s);e.edge=this.createEdge(h,l,undefined,s);m.edge=this.createEdge(l,a,undefined,s);this.attachCircleEvent(p);
+this.attachCircleEvent(m);return}};Voronoi.prototype.CircleEvent=function(){this.arc=null;this.rbLeft=null;this.rbNext=null;
+this.rbParent=null;this.rbPrevious=null;this.rbRed=false;this.rbRight=null;this.site=null;this.x=this.y=this.ycenter=0};Voronoi.prototype.attachCircleEvent=function(i){var r=i.rbPrevious,o=i.rbNext;
+if(!r||!o){return}var k=r.site,u=i.site,c=o.site;if(k===c){return}var t=u.x,s=u.y,n=k.x-t,l=k.y-s,f=c.x-t,e=c.y-s;var v=2*(n*e-l*f);
+if(v>=-2e-12){return}var h=n*n+l*l,g=f*f+e*e,m=(e*h-l*g)/v,j=(n*g-f*h)/v,b=j+s;var q=this.circleEventJunkyard.pop();if(!q){q=new this.CircleEvent()
+}q.arc=i;q.site=u;q.x=m+t;q.y=b+this.sqrt(m*m+j*j);q.ycenter=b;i.circleEvent=q;var a=null,p=this.circleEvents.root;while(p){if(q.y<p.y||(q.y===p.y&&q.x<=p.x)){if(p.rbLeft){p=p.rbLeft
+}else{a=p.rbPrevious;break}}else{if(p.rbRight){p=p.rbRight}else{a=p;break}}}this.circleEvents.rbInsertSuccessor(a,q);if(!a){this.firstCircleEvent=q
+}};Voronoi.prototype.detachCircleEvent=function(b){var a=b.circleEvent;if(a){if(!a.rbPrevious){this.firstCircleEvent=a.rbNext
+}this.circleEvents.rbRemoveNode(a);this.circleEventJunkyard.push(a);b.circleEvent=null}};Voronoi.prototype.connectEdge=function(l,a){var b=l.vb;
+if(!!b){return true}var c=l.va,p=a.xl,n=a.xr,r=a.yt,d=a.yb,o=l.lSite,e=l.rSite,i=o.x,h=o.y,k=e.x,j=e.y,g=(i+k)/2,f=(h+j)/2,m,q;
+this.cells[o.voronoiId].closeMe=true;this.cells[e.voronoiId].closeMe=true;if(j!==h){m=(i-k)/(j-h);q=f-m*g}if(m===undefined){if(g<p||g>=n){return false
+}if(i>k){if(!c||c.y<r){c=this.createVertex(g,r)}else{if(c.y>=d){return false}}b=this.createVertex(g,d)}else{if(!c||c.y>d){c=this.createVertex(g,d)
+}else{if(c.y<r){return false}}b=this.createVertex(g,r)}}else{if(m<-1||m>1){if(i>k){if(!c||c.y<r){c=this.createVertex((r-q)/m,r)
+}else{if(c.y>=d){return false}}b=this.createVertex((d-q)/m,d)}else{if(!c||c.y>d){c=this.createVertex((d-q)/m,d)}else{if(c.y<r){return false
+}}b=this.createVertex((r-q)/m,r)}}else{if(h<j){if(!c||c.x<p){c=this.createVertex(p,m*p+q)}else{if(c.x>=n){return false}}b=this.createVertex(n,m*n+q)
+}else{if(!c||c.x>n){c=this.createVertex(n,m*n+q)}else{if(c.x<p){return false}}b=this.createVertex(p,m*p+q)}}}l.va=c;l.vb=b;
+return true};Voronoi.prototype.clipEdge=function(d,i){var b=d.va.x,l=d.va.y,h=d.vb.x,g=d.vb.y,f=0,e=1,k=h-b,j=g-l;var c=b-i.xl;
+if(k===0&&c<0){return false}var a=-c/k;if(k<0){if(a<f){return false}if(a<e){e=a}}else{if(k>0){if(a>e){return false}if(a>f){f=a
+}}}c=i.xr-b;if(k===0&&c<0){return false}a=c/k;if(k<0){if(a>e){return false}if(a>f){f=a}}else{if(k>0){if(a<f){return false
+}if(a<e){e=a}}}c=l-i.yt;if(j===0&&c<0){return false}a=-c/j;if(j<0){if(a<f){return false}if(a<e){e=a}}else{if(j>0){if(a>e){return false
+}if(a>f){f=a}}}c=i.yb-l;if(j===0&&c<0){return false}a=c/j;if(j<0){if(a>e){return false}if(a>f){f=a}}else{if(j>0){if(a<f){return false
+}if(a<e){e=a}}}if(f>0){d.va=this.createVertex(b+f*k,l+f*j)}if(e<1){d.vb=this.createVertex(b+e*k,l+e*j)}if(f>0||e<1){this.cells[d.lSite.voronoiId].closeMe=true;
+this.cells[d.rSite.voronoiId].closeMe=true}return true};Voronoi.prototype.clipEdges=function(e){var a=this.edges,d=a.length,c,b=Math.abs;
+while(d--){c=a[d];if(!this.connectEdge(c,e)||!this.clipEdge(c,e)||(b(c.va.x-c.vb.x)<1e-9&&b(c.va.y-c.vb.y)<1e-9)){c.va=c.vb=null;
+a.splice(d,1)}}};Voronoi.prototype.closeCells=function(p){var g=p.xl,d=p.xr,m=p.yt,j=p.yb,q=this.cells,a=q.length,n,e,o,c,b,l,k,i,f,h=Math.abs;
+while(a--){n=q[a];if(!n.prepareHalfedges()){continue}if(!n.closeMe){continue}o=n.halfedges;c=o.length;e=0;while(e<c){l=o[e].getEndpoint();
+i=o[(e+1)%c].getStartpoint();if(h(l.x-i.x)>=1e-9||h(l.y-i.y)>=1e-9){switch(true){case this.equalWithEpsilon(l.x,g)&&this.lessThanWithEpsilon(l.y,j):f=this.equalWithEpsilon(i.x,g);
+k=this.createVertex(g,f?i.y:j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
+if(f){break}l=k;case this.equalWithEpsilon(l.y,j)&&this.lessThanWithEpsilon(l.x,d):f=this.equalWithEpsilon(i.y,j);k=this.createVertex(f?i.x:d,j);
+b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}l=k;case this.equalWithEpsilon(l.x,d)&&this.greaterThanWithEpsilon(l.y,m):f=this.equalWithEpsilon(i.x,d);
+k=this.createVertex(d,f?i.y:m);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
+if(f){break}l=k;case this.equalWithEpsilon(l.y,m)&&this.greaterThanWithEpsilon(l.x,g):f=this.equalWithEpsilon(i.y,m);k=this.createVertex(f?i.x:g,m);
+b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}l=k;f=this.equalWithEpsilon(i.x,g);
+k=this.createVertex(g,f?i.y:j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));c++;
+if(f){break}l=k;f=this.equalWithEpsilon(i.y,j);k=this.createVertex(f?i.x:d,j);b=this.createBorderEdge(n.site,l,k);e++;o.splice(e,0,this.createHalfedge(b,n.site,null));
+c++;if(f){break}l=k;f=this.equalWithEpsilon(i.x,d);k=this.createVertex(d,f?i.y:m);b=this.createBorderEdge(n.site,l,k);e++;
+o.splice(e,0,this.createHalfedge(b,n.site,null));c++;if(f){break}default:throw"Voronoi.closeCells() > this makes no sense!"
+}}e++}n.closeMe=false}};Voronoi.prototype.quantizeSites=function(c){var b=this.ε,d=c.length,a;while(d--){a=c[d];a.x=Math.floor(a.x/b)*b;
+a.y=Math.floor(a.y/b)*b}};Voronoi.prototype.recycle=function(a){if(a){if(a instanceof this.Diagram){this.toRecycle=a}else{throw"Voronoi.recycleDiagram() > Need a Diagram object."
+}}};Voronoi.prototype.compute=function(i,j){var d=new Date();this.reset();if(this.toRecycle){this.vertexJunkyard=this.vertexJunkyard.concat(this.toRecycle.vertices);
+this.edgeJunkyard=this.edgeJunkyard.concat(this.toRecycle.edges);this.cellJunkyard=this.cellJunkyard.concat(this.toRecycle.cells);
+this.toRecycle=null}var h=i.slice(0);h.sort(function(n,m){var o=m.y-n.y;if(o){return o}return m.x-n.x});var b=h.pop(),l=0,f,e,k=this.cells,a;
+for(;;){a=this.firstCircleEvent;if(b&&(!a||b.y<a.y||(b.y===a.y&&b.x<a.x))){if(b.x!==f||b.y!==e){k[l]=this.createCell(b);b.voronoiId=l++;
+this.addBeachsection(b);e=b.y;f=b.x}b=h.pop()}else{if(a){this.removeBeachsection(a.arc)}else{break}}}this.clipEdges(j);this.closeCells(j);
+var c=new Date();var g=new this.Diagram();g.cells=this.cells;g.edges=this.edges;g.vertices=this.vertices;g.execTime=c.getTime()-d.getTime();
+this.reset();return g};
+
+</script>
+
+<script>
+// ==============================================================================
+// 1. Avocado Density & Gauss Quadrature Engine
+// ==============================================================================
+const DENSITY_NORM = Math.sqrt(3.0) / (4.0 * Math.PI); // ~0.137832
+const UNIT_SQ_TRUE_VOL = 0.11274558;
+
+function f_avocado(x, y) {
+  // x in [0, 1], y in [0, 1]
+  return DENSITY_NORM * Math.exp(-0.5 * (x * x - x * y + y * y));
+}
+
+// 5-point Gauss-Legendre quadrature nodes and weights mapped to [0, 1]
+const GL_R = [0.046910077, 0.230765345, 0.500000000, 0.769234655, 0.953089923];
+const GL_W = [0.118463443, 0.239314335, 0.284444444, 0.239314335, 0.118463443];
+
+function integrateTriangleDuffy(Ax, Ay, Bx, By, Cx, Cy) {
+  const area = 0.5 * Math.abs((Bx - Ax) * (Cy - Ay) - (Cx - Ax) * (By - Ay));
+  if (area < 1e-12) return 0.0;
+
+  let sum = 0.0;
+  for (let i = 0; i < 5; i++) {
+    const r1 = GL_R[i];
+    const w1 = GL_W[i];
+    for (let j = 0; j < 5; j++) {
+      const r2 = GL_R[j];
+      const w2 = GL_W[j];
+      const x = (1.0 - r1) * Ax + r1 * (1.0 - r2) * Bx + r1 * r2 * Cx;
+      const y = (1.0 - r1) * Ay + r1 * (1.0 - r2) * By + r1 * r2 * Cy;
+      sum += w1 * w2 * r1 * f_avocado(x, y);
+    }
+  }
+  return 2.0 * area * sum;
+}
+
+function integratePolygon(vertices) {
+  const n = vertices.length;
+  if (n < 3) return { area: 0, volume: 0 };
+
+  // 1. Centroid
+  let cx = 0, cy = 0, signedArea = 0;
+  for (let i = 0; i < n; i++) {
+    const p1 = vertices[i];
+    const p2 = vertices[(i + 1) % n];
+    const a = p1.x * p2.y - p2.x * p1.y;
+    signedArea += a;
+    cx += (p1.x + p2.x) * a;
+    cy += (p1.y + p2.y) * a;
+  }
+  signedArea *= 0.5;
+  const polyArea = Math.abs(signedArea);
+  if (polyArea < 1e-12) return { area: 0, volume: 0 };
+
+  cx /= (6.0 * signedArea);
+  cy /= (6.0 * signedArea);
+
+  // 2. Simplicial Gauss integration fanning from centroid
+  let polyVol = 0.0;
+  for (let i = 0; i < n; i++) {
+    const p1 = vertices[i];
+    const p2 = vertices[(i + 1) % n];
+    polyVol += integrateTriangleDuffy(cx, cy, p1.x, p1.y, p2.x, p2.y);
+  }
+
+  return { area: polyArea, volume: polyVol };
+}
+
+// ==============================================================================
+// 2. App State & Pre-rendered Density Heatmap
+// ==============================================================================
+const canvas = document.getElementById('voronoiCanvas');
+const ctx = canvas.getContext('2d');
+const W = 600, H = 600;
+const voronoi = new Voronoi();
+const bbox = { xl: 0, xr: W, yt: 0, yb: H };
+
+// Pre-render the avocado density background
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = W;
+bgCanvas.height = H;
+const bgCtx = bgCanvas.getContext('2d');
+
+function initBackground() {
+  const imgData = bgCtx.createImageData(W, H);
+  const data = imgData.data;
+
+  for (let py = 0; py < H; py++) {
+    const y = (H - 1 - py) / (H - 1); // 0 at bottom, 1 at top
+    for (let px = 0; px < W; px++) {
+      const x = px / (W - 1); // 0 at left, 1 at right
+      const f = f_avocado(x, y);
+      const normVal = Math.min(1.0, f / DENSITY_NORM); // 0 to 1
+
+      // Avocado color ramp:
+      // High: Deep forest green [20, 83, 45]
+      // Mid: Vivid lime green [132, 204, 22]
+      // Low: Creamy pale lime [247, 254, 231]
+      let r, g, b;
+      if (normVal > 0.5) {
+        const t = (normVal - 0.5) * 2.0;
+        r = Math.round(132 * (1 - t) + 20 * t);
+        g = Math.round(204 * (1 - t) + 83 * t);
+        b = Math.round(22 * (1 - t) + 45 * t);
+      } else {
+        const t = normVal * 2.0;
+        r = Math.round(247 * (1 - t) + 132 * t);
+        g = Math.round(254 * (1 - t) + 204 * t);
+        b = Math.round(231 * (1 - t) + 22 * t);
+      }
+
+      // Subtle contour rings
+      const ring = Math.floor(normVal * 12);
+      if (Math.abs(normVal * 12 - ring) < 0.08) {
+        r = Math.max(0, r - 35);
+        g = Math.max(0, g - 35);
+        b = Math.max(0, b - 35);
+      }
+
+      const idx = (py * W + px) * 4;
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = 255;
+    }
+  }
+  bgCtx.putImageData(imgData, 0, 0);
+
+  // Overlay coordinate axes
+  bgCtx.strokeStyle = "rgba(15, 23, 42, 0.45)";
+  bgCtx.lineWidth = 1;
+  bgCtx.beginPath();
+  for (let s = 100; s < W; s += 100) {
+    bgCtx.moveTo(s, 0); bgCtx.lineTo(s, H);
+    bgCtx.moveTo(0, s); bgCtx.lineTo(W, s);
+  }
+  bgCtx.stroke();
+}
+initBackground();
+
+// Game State
+let sites = []; // { x: px, y: py, player: 1 (Red) or 2 (Blue) }
+let activeMouseSite = null;
+let currentTurn = 1; // 1 to 6
+let isGameOver = false;
+
+// ==============================================================================
+// 3. Game Mechanics & Voronoi Rendering
+// ==============================================================================
+function getPlayerForTurn(turn) {
+  // Odd turns: Red (Player 1), Even turns: Blue (Player 2)
+  return turn % 2 === 1 ? 1 : 2;
+}
+
+function canvasToUnit(px, py) {
+  return { x: px / W, y: (H - py) / H };
+}
+
+function unitToCanvas(ux, uy) {
+  return { x: ux * W, y: H - uy * H };
+}
+
+function checkQuarantine(x, y, radius = 50) {
+  for (const s of sites) {
+    const dx = x - s.x;
+    const dy = y - s.y;
+    if (Math.sqrt(dx * dx + dy * dy) < radius) return false;
+  }
+  return true;
+}
+
+function computeScores(diagram) {
+  if (!diagram || !diagram.cells) return { redVol: 0, blueVol: 0, redArea: 0, blueArea: 0 };
+
+  let redVol = 0, blueVol = 0;
+  let redArea = 0, blueArea = 0;
+
+  for (const cell of diagram.cells) {
+    const site = cell.site;
+    const halfedges = cell.halfedges;
+    if (!halfedges || halfedges.length < 3) continue;
+
+    // Convert halfedges to ordered polygon vertices in [0, 1]^2
+    const polyUnitVerts = [];
+    for (let i = 0; i < halfedges.length; i++) {
+      const sp = halfedges[i].getStartpoint();
+      polyUnitVerts.push(canvasToUnit(sp.x, sp.y));
+    }
+
+    const { area, volume } = integratePolygon(polyUnitVerts);
+
+    if (site.player === 1) {
+      redArea += area;
+      redVol += volume;
+    } else if (site.player === 2) {
+      blueArea += area;
+      blueVol += volume;
+    }
+  }
+
+  return { redVol, blueVol, redArea, blueArea };
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(bgCanvas, 0, 0);
+
+  const displaySites = [...sites];
+  if (activeMouseSite && !isGameOver) {
+    displaySites.push(activeMouseSite);
+  }
+
+  if (displaySites.length === 0) return;
+
+  voronoi.recycle(voronoi.diagram);
+  const diagram = voronoi.compute(displaySites, bbox);
+  if (!diagram) return;
+
+  // 1. Draw Voronoi cells
+  for (const cell of diagram.cells) {
+    const site = cell.site;
+    const halfedges = cell.halfedges;
+    if (!halfedges || halfedges.length < 3) continue;
+
+    ctx.beginPath();
+    const start = halfedges[0].getStartpoint();
+    ctx.moveTo(start.x, start.y);
+    for (let i = 0; i < halfedges.length; i++) {
+      const end = halfedges[i].getEndpoint();
+      ctx.lineTo(end.x, end.y);
+    }
+    ctx.closePath();
+
+    const isRed = site.player === 1;
+    ctx.fillStyle = isRed ? "rgba(239, 68, 68, 0.38)" : "rgba(59, 130, 246, 0.38)";
+    ctx.fill();
+
+    ctx.strokeStyle = isRed ? "#B91C1C" : "#1D4ED8";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  // 2. Delaunay Triangulation Dual (if checked)
+  if (document.getElementById('checkDelaunay').checked && displaySites.length >= 2) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(220, 38, 38, 0.75)";
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    for (const edge of diagram.edges) {
+      if (edge.lSite && edge.rSite) {
+        ctx.beginPath();
+        ctx.moveTo(edge.lSite.x, edge.lSite.y);
+        ctx.lineTo(edge.rSite.x, edge.rSite.y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 3. Draw Seed Points
+  displaySites.forEach((s, idx) => {
+    const isRed = s.player === 1;
+    const isPreview = s === activeMouseSite;
+
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, isPreview ? 6 : 7.5, 0, 2 * Math.PI);
+    ctx.fillStyle = isRed ? "#EF4444" : "#3B82F6";
+    ctx.fill();
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Center badge
+    if (!isPreview) {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 11px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`C${idx + 1}`, s.x, s.y - 12);
+    }
+  });
+
+  // 4. Update UI scores
+  updateScoreboard(diagram);
+}
+
+function updateScoreboard(diagram) {
+  const { redVol, blueVol, redArea, blueArea } = computeScores(diagram);
+  const totalVol = Math.max(1e-12, redVol + blueVol);
+  const totalArea = Math.max(1e-12, redArea + blueArea);
+
+  const redVolPct = (redVol / totalVol) * 100.0;
+  const blueVolPct = (blueVol / totalVol) * 100.0;
+  const redAreaPct = (redArea / totalArea) * 100.0;
+  const blueAreaPct = (blueArea / totalArea) * 100.0;
+
+  // Update progress bars
+  document.getElementById('barVolRed').style.width = `${redVolPct}%`;
+  document.getElementById('barVolBlue').style.width = `${blueVolPct}%`;
+  document.getElementById('valVolRed').textContent = `Red: ${redVolPct.toFixed(1)}%`;
+  document.getElementById('valVolBlue').textContent = `Blue: ${blueVolPct.toFixed(1)}%`;
+
+  document.getElementById('barAreaRed').style.width = `${redAreaPct}%`;
+  document.getElementById('barAreaBlue').style.width = `${blueAreaPct}%`;
+  document.getElementById('valAreaRed').textContent = `Red: ${redAreaPct.toFixed(1)}%`;
+  document.getElementById('valAreaBlue').textContent = `Blue: ${blueAreaPct.toFixed(1)}%`;
+
+  const volDiff = redVolPct - blueVolPct;
+  const areaDiff = redAreaPct - blueAreaPct;
+
+  document.getElementById('volLeadText').textContent = volDiff >= 0 ? `Red +${volDiff.toFixed(1)}%` : `Blue +${Math.abs(volDiff).toFixed(1)}%`;
+  document.getElementById('areaLeadText').textContent = areaDiff >= 0 ? `Red +${areaDiff.toFixed(1)}%` : `Blue +${Math.abs(areaDiff).toFixed(1)}%`;
+
+  // Divergence check
+  const divBox = document.getElementById('divergenceBox');
+  if (sites.length >= 2) {
+    const redDiv = redVolPct - redAreaPct;
+    if (Math.abs(redDiv) > 1.5) {
+      const leaderArea = redAreaPct > blueAreaPct ? "Red" : "Blue";
+      const leaderVol = redVolPct > blueVolPct ? "Red" : "Blue";
+      if (leaderArea !== leaderVol) {
+        divBox.innerHTML = `🚨 <b>PARADOX DETECTED:</b> <b>${leaderArea}</b> controls more physical land area (${Math.max(redAreaPct, blueAreaPct).toFixed(1)}%), but <b>${leaderVol}</b> wins the avocado harvest (${Math.max(redVolPct, blueVolPct).toFixed(1)}%)!`;
+        divBox.style.background = "rgba(239, 68, 68, 0.18)";
+        divBox.style.borderColor = "#EF4444";
+        divBox.style.color = "#FCA5A5";
+      } else {
+        divBox.innerHTML = `⚡ <b>Divergence:</b> Red volume share is <b>${redDiv >= 0 ? "+" : ""}${redDiv.toFixed(1)}%</b> relative to its land area, driven by proximity to the (0, 0) avocado goldmine.`;
+        divBox.style.background = "rgba(234, 179, 8, 0.12)";
+        divBox.style.borderColor = "rgba(234, 179, 8, 0.4)";
+        divBox.style.color = "#FDE047";
+      }
+    }
+  }
+
+  // Turn box indicator
+  const turnBox = document.getElementById('turnBox');
+  const turnText = document.getElementById('turnText');
+  const turnPill = document.getElementById('turnPill');
+
+  if (isGameOver) {
+    turnBox.style.display = "none";
+  } else {
+    turnBox.style.display = "flex";
+    const nextPlayer = getPlayerForTurn(currentTurn);
+    if (nextPlayer === 1) {
+      turnBox.className = "turn-box";
+      turnText.textContent = "Player 1's Turn (Red)";
+      turnPill.className = "turn-pill";
+      turnPill.textContent = `Seed ${currentTurn} of 6`;
+    } else {
+      turnBox.className = "turn-box blue";
+      turnText.textContent = "Player 2's Turn (Blue)";
+      turnPill.className = "turn-pill blue";
+      turnPill.textContent = `Seed ${currentTurn} of 6`;
+    }
+  }
+}
+
+// ==============================================================================
+// 4. AI Solver (Greedy Volume & Greedy Area)
+// ==============================================================================
+function computeAIMove(targetMode = "ai_volume") {
+  const candidateStep = 25;
+  let bestX = W / 2, bestY = H / 2;
+  let bestScore = -1;
+
+  for (let x = 40; x <= W - 40; x += candidateStep) {
+    for (let y = 40; y <= H - 40; y += candidateStep) {
+      if (!checkQuarantine(x, y, 40)) continue;
+
+      const testSites = [...sites, { x, y, player: 2 }];
+      const diag = voronoi.compute(testSites, bbox);
+      if (!diag) continue;
+
+      const scores = computeScores(diag);
+      const score = targetMode === "ai_volume" ? scores.blueVol : scores.blueArea;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = x;
+        bestY = y;
+      }
+    }
+  }
+  return { x: bestX, y: bestY, player: 2 };
+}
+
+// ==============================================================================
+// 5. User Interaction & Turn Management
+// ==============================================================================
+function placeSeed(x, y) {
+  if (isGameOver) return;
+  const useQuarantine = document.getElementById('checkQuarantine').checked;
+  if (useQuarantine && !checkQuarantine(x, y, 40)) {
+    alert("Too close to another seed! Quarantine radius requires minimum distance.");
+    return;
+  }
+
+  const p = getPlayerForTurn(currentTurn);
+  sites.push({ x, y, player: p });
+  currentTurn++;
+
+  if (sites.length >= 6) {
+    finishGame();
+  } else {
+    // If playing against computer and next turn is Blue
+    const mode = document.getElementById('modeSelect').value;
+    if ((mode === "ai_volume" || mode === "ai_area") && getPlayerForTurn(currentTurn) === 2) {
+      setTimeout(() => {
+        const aiSeed = computeAIMove(mode);
+        sites.push(aiSeed);
+        currentTurn++;
+        if (sites.length >= 6) finishGame();
+        render();
+      }, 250);
+    }
+  }
+  render();
+}
+
+function finishGame() {
+  isGameOver = true;
+  activeMouseSite = null;
+
+  const diag = voronoi.compute(sites, bbox);
+  const { redVol, blueVol, redArea, blueArea } = computeScores(diag);
+
+  const banner = document.getElementById('gameOverBanner');
+  const title = document.getElementById('winnerTitle');
+  const desc = document.getElementById('winnerDesc');
+
+  banner.className = "game-over-banner active";
+  const volWinner = redVol > blueVol ? "Player 1 (Red)" : "Player 2 (Blue)";
+  const areaWinner = redArea > blueArea ? "Player 1 (Red)" : "Player 2 (Blue)";
+
+  const redVolPct = ((redVol / (redVol + blueVol)) * 100).toFixed(1);
+  const blueVolPct = ((blueVol / (redVol + blueVol)) * 100).toFixed(1);
+
+  if (volWinner === areaWinner) {
+    title.textContent = `🏆 ${volWinner} Wins the Avocado Harvest!`;
+    desc.textContent = `Captured ${volWinner === "Player 1 (Red)" ? redVolPct : blueVolPct}% volume share and dominated physical area.`;
+  } else {
+    title.textContent = `⚡ Economic Paradox: ${volWinner} Wins!`;
+    desc.textContent = `${areaWinner} captured more land, but ${volWinner} captured the avocado goldmine (${volWinner === "Player 1 (Red)" ? redVolPct : blueVolPct}% volume)!`;
+  }
+}
+
+// Mouse events
+canvas.addEventListener('mousemove', (e) => {
+  if (isGameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round(e.clientX - rect.left);
+  const y = Math.round(e.clientY - rect.top);
+
+  activeMouseSite = {
+    x: Math.max(10, Math.min(W - 10, x)),
+    y: Math.max(10, Math.min(H - 10, y)),
+    player: getPlayerForTurn(currentTurn)
+  };
+  render();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  activeMouseSite = null;
+  render();
+});
+
+canvas.addEventListener('click', (e) => {
+  if (isGameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round(e.clientX - rect.left);
+  const y = Math.round(e.clientY - rect.top);
+  placeSeed(x, y);
+});
+
+// Controls
+document.getElementById('btnRestart').addEventListener('click', () => {
+  sites = [];
+  currentTurn = 1;
+  isGameOver = false;
+  activeMouseSite = null;
+  document.getElementById('gameOverBanner').className = "game-over-banner";
+  render();
+});
+
+document.getElementById('checkDelaunay').addEventListener('change', render);
+document.getElementById('modeSelect').addEventListener('change', () => {
+  document.getElementById('btnRestart').click();
+});
+
+document.getElementById('btnCopyCoords').addEventListener('click', () => {
+  const coords = sites.map(s => {
+    const u = canvasToUnit(s.x, s.y);
+    return [parseFloat(u.x.toFixed(4)), parseFloat(u.y.toFixed(4))];
+  });
+  const jsonStr = JSON.stringify(coords);
+  navigator.clipboard.writeText(jsonStr).then(() => {
+    alert(`Copied ${coords.length} center coordinates to clipboard! Paste into your Python notebook:\n\n${jsonStr}`);
+  });
+});
+
+// Initial draw
+render();
+</script>
+</body>
+</html>
